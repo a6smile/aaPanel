@@ -127,15 +127,15 @@ var index = {
         })
 
         _this.get_data_info(function (loadbox, rdata) {
-            loadbox.hover(function () {
+            loadbox.find('.cicle').hover(function () {
                 var _this = $(this);
                 var d = _this.parents('ul').data('data').load;
-                layer.tips(lan.index.avg_load_atlast_onemin + d.one + '</br>'+ lan.index.avg_load_atlast_fivemin + d.five + '</br>'+ lan.index.avg_load_atlast_fifteenmin + d.fifteen + '', _this.find('.cicle'), { time: 0, tips: [1, '#999'] });
+                layer.tips(lan.index.avg_load_atlast_onemin + d.one + '</br>'+ lan.index.avg_load_atlast_fivemin + d.five + '</br>'+ lan.index.avg_load_atlast_fifteenmin + d.fifteen + '', _this, { time: 0, tips: [1, '#999'] });
             }, function () {
                 layer.closeAll('tips');
             })
 
-            $('.cpubox').hover(function () {
+            $('.cpubox').find('.cicle').hover(function () {
                 var _this = $(this);
                 var d = _this.parents('ul').data('data').cpu;
                 var crs = '';
@@ -145,7 +145,7 @@ var index = {
                     crs += 'CPU-' + i + ": " + d[2][i] + '%' + (n1 % 2 == 0?'</br>':' | ');
 
                 }
-                layer.tips(d[3] +"</br>"+ crs, _this.find('.cicle'), { time: 0, tips: [1, '#999'] });
+                layer.tips(d[3] + "</br>" + d[5] + " CPU, " + d[4] + " Core, " + d[4]+" Thread</br>"+ crs, _this, { time: 0, tips: [1, '#999'] });
             }, function () {
                 layer.closeAll('tips');
             });
@@ -164,7 +164,8 @@ var index = {
                     $(this).find(".mem-re-min").show();
                 }
                 else {
-                    $(this).find(".mem-re-min").hide();
+                    return false;
+                    //$(this).find(".mem-re-min").hide();
                 }
                 $(this).removeClass("shine_green");
                 $(this).find(".occupy").css({ "color": "#20a53a" });
@@ -172,6 +173,7 @@ var index = {
 				$(this).next().show();
                 //$(this).next().html(bt.get_cookie("mem-before"));
             }).click(function () {
+                if (($(this).hasClass("mem-action"))) return false;
                 var _this = $(this);
                 bt.show_confirm(lan.index.mem_release_sure, '<font style="color:red;">'+lan.index.mem_release_warn+'</font>', function () {
                     if (!(_this.hasClass("mem-action"))) {
@@ -223,17 +225,20 @@ var index = {
         }, 1500)
     },
     get_data_info: function (callback) {
-
+        var _this = $(this);
         bt.system.get_net(function (net) {
 
             var pub_arr = [{ val: 100, color: '#dd2f00' }, { val: 90, color: '#ff9900' }, { val: 70, color: '#20a53a' }, { val: 30, color: '#20a53a' }];
             var load_arr = [{ title: lan.index.run_block, val: 100, color: '#dd2f00' }, { title: lan.index.run_slow, val: 90, color: '#ff9900' }, { title: lan.index.run_normal, val: 70, color: '#20a53a' }, { title: lan.index.run_fluent, val: 30, color: '#20a53a' }];
-            var _cpubox = $('.cpubox'), _membox = $('.membox'), _loadbox = $('.loadbox')
+            var _cpubox = $('.cpubox'), _membox = $('.membox'), _loadbox = $('.loadbox'), _diskbox = $('.diskbox')
 
-            index.set_val(_cpubox, { usage: net.cpu[0], title: net.cpu[1] + ' ' + lan.index.cpu_core, items: pub_arr })
+            index.set_val(_cpubox, { usage: net.cpu[0], title: net.cpu[1]+' '+lan.index.cpu_core, items: pub_arr })
             index.set_val(_membox, { usage: (net.mem.memRealUsed * 100 / net.mem.memTotal).toFixed(1), items: pub_arr, title: net.mem.memRealUsed + '/' + net.mem.memTotal + '(MB)' })
             bt.set_cookie('memSize', net.mem.memTotal)
-
+            for (var i = 0; i < _diskbox.length; i++) {
+                index.set_val(_diskbox.eq(i), { usage: net.disk[i].size[3].split('%')[0], title: net.disk[i].size[1]+'/'+net.disk[0].size[0], items: pub_arr })
+            }
+            
             var _lval = Math.round((net.load.one / net.load.max) * 100);
             if (_lval > 100) _lval = 100;
             index.set_val(_loadbox, { usage: _lval, items: load_arr })
@@ -261,6 +266,11 @@ var index = {
             if (info.isuser > 0) {
                 $("#messageError").show();
                 $("#messageError").append('<p><span class="glyphicon glyphicon-alert" style="color: #ff4040; margin-right: 10px;"></span>' + lan.index.user_warning + '<span class="c7 mr5" title="'+lan.index.safe_problem_cant_ignore+'" style="cursor:no-drop"> ['+lan.index.cant_ignore+']</span><a class="btlink" href="javascript:setUserName();"> ['+lan.index.edit_now+']</a></p>')
+            }
+
+            if (info.isport === true) {
+                $("#messageError").show();
+                $("#messageError").append('<p><span class="glyphicon glyphicon-alert" style="color: #ff4040; margin-right: 10px;"></span>'+lan.index.panel_port_tips+'<span class="c7 mr5" title="'+lan.index.panel_port_tip1+'" style="cursor:no-drop"> ['+lan.index.panel_port_tip2+']</span><a class="btlink" href="/config"> ['+lan.index.panel_port_tip3+']</a></p>')
             }
             var _system = info.system;
             $("#info").html(_system);
@@ -302,6 +312,11 @@ var index = {
                     arr.push({ title: lan.index.already_use, value: item.inodes[1] })
                     arr.push({ title: lan.index.available, value: item.inodes[2] })
                     arr.push({ title: lan.index.inode_percent, value: item.inodes[3] })
+                    arr.push({ title: '<b>Capacity information</b>', value: '' })
+                    arr.push({ title: 'Capacity', value: item.size[0] })
+                    arr.push({ title: 'Used', value: item.size[1] })
+                    arr.push({ title: 'Available', value: item.size[2] })
+                    arr.push({ title: 'Usage rate', value: item.size[3] })
                     obj.masks = arr;
                     data.items.push(obj)
                 }
@@ -325,14 +340,13 @@ var index = {
                 html += '<h4 class="c9 f15">' + item.title + '</h4>';
                 html += '</li>';
                 var _li = $(html);
-
                 if (item.masks) {
                     var mask = '';
                     for (var j = 0; j < item.masks.length; j++) mask += item.masks[j].title + ': ' + item.masks[j].value + "<br>";
                     _li.data('mask', mask);
-                    _li.hover(function () {
+                    _li.find('.cicle').hover(function () {
                         var _this = $(this);
-                        layer.tips(_this.data('mask'), _this.find('.cicle'), { time: 0, tips: [1, '#999'] });
+                        layer.tips(_this.parent().data('mask'), _this, { time: 0, tips: [1, '#999'] });
                     }, function () {
                         layer.closeAll('tips');
                     })
@@ -446,7 +460,9 @@ var index = {
         })
     },
     check_update: function () {
+    	var _load = bt.load('Getting updates, please wait...');
         bt.system.check_update(function (rdata) {
+        	_load.close();
             if (rdata.status === false) {
                 if (!rdata.msg.beta) {
                     bt.msg(rdata);
@@ -499,7 +515,7 @@ var index = {
                     content: '<div class="setchmod bt-form" style="padding-bottom:50px;">\
                                     <div class="update_title"><i class="layui-layer-ico layui-layer-ico0"></i><span>'+lan.index.have_new_version+'</span></div>\
                                     <div class="update_conter">\
-                                        <div class="update_version">'+lan.index.last_version+'<a href="https://forum.aapanel.com/d/9-aapanel-linux-panel-6-1-5-installation-tutorial/36" target="_blank" class="btlink" title="'+lan.index.check_version_log+'">'+lan.index.bt_linux+ (is_beta === 1 ? lan.index.test_version : lan.index.final_version) + rdata.version + '</a>&nbsp;&nbsp;'+lan.index.update_date + (result.msg.is_beta == 1 ? result.msg.beta.uptime : result.msg.uptime) + '</div>\
+                                        <div class="update_version">'+lan.index.last_version+'<a href="https://forum.aapanel.com/d/9-aapanel-linux-panel-6-1-5-installation-tutorial/36" target="_blank" class="btlink" title="'+lan.index.check_version_log+'">'+lan.index.bt_linux+ (is_beta === 1 ? lan.index.test_version : lan.index.final_version) + rdata.version + '</a></br>'+lan.index.update_date + (result.msg.is_beta == 1 ? result.msg.beta.uptime : result.msg.uptime) + '</div>\
                                         <div class="update_logs">'+ rdata.updateMsg + '</div>\
                                     </div>\
                                     <!--div class="update_conter">\
@@ -512,7 +528,7 @@ var index = {
                                     </div>\
                                 </div>\
                                 <style>\
-                                    .update_title{overflow: hidden;position: relative;vertical-align: middle;margin-top: 10px;}.update_title .layui-layer-ico{display: block;left: 60px !important;top: 1px !important;}.update_title span{display: inline-block;color: #333;height: 30px;margin-left: 105px;margin-top: 3px;font-size: 20px;}.update_conter{background: #f9f9f9;border-radius: 4px;padding: 20px;margin: 15px 37px;margin-top: 15px;}.update_version{font-size: 13.5px; margin-bottom: 10px;font-weight: 600;}.update_logs{margin-bottom:10px;}.update_tips{font-size: 13px;color:#666;}.update_conter span{display: block;font-size:13px;color:#666}\
+                                    .update_title{overflow: hidden;position: relative;vertical-align: middle;margin-top: 10px;}.update_title .layui-layer-ico{display: block;left: 71px !important;top: 1px !important;}.update_title span{display: inline-block;color: #333;height: 30px;margin-left: 117px;margin-top: 3px;font-size: 20px;}.update_conter{background: #f9f9f9;border-radius: 4px;padding: 20px;margin: 15px 37px;margin-top: 15px;}.update_version{font-size: 13.5px; margin-bottom: 10px;font-weight: 600;}.update_logs{margin-bottom:10px;}.update_tips{font-size: 13px;color:#666;}.update_conter span{display: block;font-size:13px;color:#666}\
                                 </style>'
                 });
             }
@@ -522,7 +538,7 @@ var index = {
         layer.closeAll();
         bt.system.to_update(function (rdata) {
             if (rdata.status) {
-                bt.msg({ msg: lan.index.update_ok, icon: 1 })
+                bt.msg({ msg: rdata.msg, icon: 1 })
                 $("#btversion").html(rdata.version);
                 $("#toUpdate").html('');
                 bt.system.reload_panel();
